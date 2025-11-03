@@ -18,7 +18,7 @@
 
     /* Layout: graph on the left, info panel on the right */
     .app { position: fixed; inset: 0; }
-    #cy { width: 100%; height: 100vh; display: block; }
+    #cy { width: 100%; height: 100vh; display: block; padding-right: 360px; box-sizing: border-box; }
 
     aside#panel {
       position: fixed;
@@ -61,7 +61,7 @@
     a.link:hover { text-decoration: underline; }
 
     @media (max-width: 960px) {
-      .app { grid-template-columns: 1fr; }
+      #cy { padding-right: 0; }
       aside#panel { position: fixed; right: 0; top: 0; bottom: 0; width: min(92vw, 420px); transform: translateX(100%); transition: transform .25s ease; box-shadow: -16px 0 40px rgba(0,0,0,.35); }
       aside#panel.open { transform: translateX(0); }
     }
