@@ -1,37 +1,347 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Network Viewer</title>
-<!-- Cytoscape.js (single-file UMD build) -->
-<script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-<!-- Optional: fast viewport performance on large graphs -->
-<script src="https://unpkg.com/cytoscape-cose-bilkent@4.1.0/cytoscape-cose-bilkent.js"></script>
-<style>
-html, body { height: 100%; margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-#app { display: grid; grid-template-columns: 1fr 380px; height: 100%; }
-#cy { height: 100%; width: 100%; background: #0b1020; } /* deep navy to make edges pop */
-#panel { border-left: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; overflow: auto; }
-#panel header { display:flex; align-items:center; justify-content:space-between; padding: 10px 12px; background:#111827; position: sticky; top: 0; z-index: 2; }
-#panel h2 { margin: 0; font-size: 16px; font-weight: 600; }
-#panel .content { padding: 12px; }
-.section { margin-bottom: 14px; }
-.section h3 { font-size: 12px; letter-spacing: .04em; color:#9ca3af; text-transform: uppercase; margin: 0 0 6px; }
-.kv { font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: #111827; border:1px solid #1f2937; border-radius: 8px; padding: 8px; max-height: 180px; overflow:auto; }
-.node-list { display: grid; gap: 6px; grid-auto-rows: minmax(28px, auto); }
-.node-btn { text-align: left; width: 100%; padding: 6px 8px; background: #111827; border: 1px solid #1f2937; color:#e5e7eb; border-radius: 8px; cursor: pointer; transition: transform .08s ease; }
-.node-btn:hover { border-color:#374151; transform: translateY(-1px); }
-.toolbar { position:absolute; left: 8px; top: 8px; display:flex; gap:8px; z-index: 3; }
-.chip { background: rgba(17,24,39,.7); color:#e5e7eb; border:1px solid #374151; padding:6px 10px; border-radius: 999px; font-size: 12px; }
-.search { position:absolute; left:8px; top:48px; z-index:3; display:flex; gap:6px; }
-.search input { width: 260px; padding:8px 10px; border-radius: 10px; border:1px solid #334155; background:#0b1220; color:#e5e7eb; }
-.search button { padding:8px 10px; border-radius: 10px; border:1px solid #334155; background:#0b1220; color:#e5e7eb; cursor:pointer; }
-.hint { font-size: 12px; color:#9ca3af; }
-.footer { padding:12px; border-top:1px solid #1f2937; color:#9ca3af; font-size:12px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stacker News Knowledge Graph</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <style>
+    :root{
+      --bg:#0e0f12; /* deep UI background */
+      --panel-bg:#17181c;
+      --muted:#9aa1aa;
+      --text:#e7eaee;
+      --accent:#5aa2ff;
+      --edge:#aab2bd;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+
+    /* Layout: graph on the left, info panel on the right */
+    .app { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 360px; }
+    #cy { width: 100%; height: 100vh; display: block; }
+
+    aside#panel {
+      border-left: 1px solid rgba(255,255,255,.06);
+      background: var(--panel-bg);
+      padding: 14px 14px 18px;
+      overflow: auto;
+    }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+    .badge { font-size: 12px; color: var(--muted); border:1px solid rgba(255,255,255,.08); padding:2px 6px; border-radius:999px; }
+    .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; color: var(--muted); background: transparent; border: 1px solid rgba(255,255,255,.08); text-decoration: none; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+    .icon-btn:hover { background: rgba(255,255,255,.06); color: var(--text); border-color: rgba(255,255,255,.18); }
+    .panel-title { margin: 0; font-size: 16px; font-weight: 600; }
+    .muted { color: var(--muted); }
+    .kv { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    .kv div { padding: 4px 6px; border-radius: 6px; }
+    .kv div:nth-child(odd) { background: rgba(255,255,255,.03); }
+    .section { margin: 14px 0 10px; }
+    .section h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .pill-list { display:flex; flex-wrap: wrap; gap: 6px; }
+    .pill { cursor: pointer; background: rgba(90,162,255,.12); border: 1px solid rgba(90,162,255,.25); color: #cfe2ff; padding: 4px 8px; border-radius: 999px; font-size: 12px; user-select: none; }
+    .pill:hover { background: rgba(90,162,255,.2); }
+
+    .toolbar { position: absolute; top: 10px; left: 10px; display: flex; gap: 8px; z-index: 10; }
+    .tool { background: rgba(23,24,28,.8); border: 1px solid rgba(255,255,255,.08); color: var(--text); border-radius: 10px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+    .tool:hover { background: rgba(23,24,28,.92); }
+
+    .loading {
+      position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; pointer-events:none;
+      background: radial-gradient(ellipse at center, rgba(20,21,25,.6), rgba(20,21,25,.2) 40%, transparent 70%);
+      color: var(--muted); font-size: 14px;
+    }
+    .hidden { display: none; }
+    a.link { color: var(--accent); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
+
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+      aside#panel { position: fixed; right: 0; top: 0; bottom: 0; width: min(92vw, 420px); transform: translateX(100%); transition: transform .25s ease; box-shadow: -16px 0 40px rgba(0,0,0,.35); }
+      aside#panel.open { transform: translateX(0); }
+    }
+  </style>
 </head>
 <body>
-    <p> Hello World </p>
+  <div class="app">
+    <div id="cy"></div>
+    <aside id="panel">
+      <div class="panel-header">
+        <div class="badge">Stacker News Knowledge Graph Explorer</div>
+        <a class="icon-btn" href="https://github.com/ed-kung/sn-graph-explorer" target="_blank" rel="noopener">
+          <i class="fa fa-github"></i>
+        </a>
+      </div>
+      <p class="muted" id="empty-msg">Click a node to see details. Left click and drag to pan. Mouse scroll to zoom.</p>
+      <div id="panel-content" class="hidden"></div>
+    </aside>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool" id="fitBtn" title="Fit graph to screen">Fit</button>
+    <button class="tool" id="resetZoomBtn" title="Reset zoom">Reset Zoom</button>
+  </div>
+
+  <div id="loader" class="loading hidden">Loading graph…</div>
+
+  <!-- Cytoscape.js (core) -->
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.27.0/dist/cytoscape.min.js"></script>
+
+  <script>
+  (function() {
+    const loader = document.getElementById('loader');
+    const panel = document.getElementById('panel');
+    const panelContent = document.getElementById('panel-content');
+    const emptyMsg = document.getElementById('empty-msg');
+
+    // --- Utility helpers ----------------------------------------------------
+    function showLoader(show) { loader.classList.toggle('hidden', !show); }
+
+    function toElements(json) {
+      // The input JSON follows the provided schema with nodes + positions + edges
+      const nodes = (json.nodes || []).map(n => ({ data: n.data, position: n.position }));
+      const edges = (json.edges || []).map(e => ({ data: e.data }));
+      return { nodes, edges };
+    }
+
+    function isSmallScreen(){ return window.matchMedia('(max-width: 960px)').matches; }
+    function openPanel(){ if (isSmallScreen()) panel.classList.add('open'); }
+    function closePanel(){ if (isSmallScreen()) panel.classList.remove('open'); }
+
+    function escapeHTML(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
+
+    function renderPanelFor(node){
+      const data = node.data();
+      // Build attribute key/values excluding id, source/target, and position
+      const entries = Object.entries(data).filter(([k]) => !['id','source','target'].includes(k));
+
+      const linkAttr = data.link ? `<a class="link" href="${escapeHTML(data.link)}" target="_blank" rel="noopener">${escapeHTML(data.link)}</a>` : '<span class="muted">—</span>';
+
+      // Neighborhoods
+      const successors = node.outgoers('node');
+      const predecessors = node.incomers('node');
+
+      function pillsFor(eles){
+        const maxShow = 120; // protect panel from giant lists
+        const arr = eles.slice(0, maxShow);
+        const more = eles.length - arr.length;
+        const pills = arr.map(el => `<span class="pill" data-node-id="${escapeHTML(el.id())}">${escapeHTML(el.id())}</span>`).join('');
+        return pills + (more>0 ? `<span class="pill" title="${more} more (not shown)">+${more} more</span>` : '');
+      }
+
+      const kv = entries
+        .filter(([k]) => k !== 'link')
+        .map(([k, v]) => `<div><strong>${escapeHTML(k)}</strong>: <span class="muted">${escapeHTML(typeof v === 'object' ? JSON.stringify(v) : v)}</span></div>`) 
+        .join('') || '<div class="muted">No attributes</div>';
+
+      const html = `
+        <div class="panel-header">
+          <div class="badge">Selected node</div>
+          <h2 class="panel-title">${escapeHTML(data.id)}</h2>
+        </div>
+        <div class="section">
+          <h3>Link</h3>
+          <div class="kv">${linkAttr}</div>
+        </div>
+        <div class="section">
+          <h3>Attributes</h3>
+          <div class="kv">${kv}</div>
+        </div>
+        <div class="section">
+          <h3>Links to: (${successors.length})</h3>
+          <div class="pill-list" id="succ-list">${pillsFor(successors)}</div>
+        </div>
+        <div class="section">
+          <h3>Linked from: (${predecessors.length})</h3>
+          <div class="pill-list" id="pred-list">${pillsFor(predecessors)}</div>
+        </div>
+      `;
+
+      panelContent.innerHTML = html;
+      emptyMsg.classList.add('hidden');
+      panelContent.classList.remove('hidden');
+      openPanel();
+    }
+
+    function wirePanelClicks(cy){
+      panel.addEventListener('click', ev => {
+        const target = ev.target.closest('.pill');
+        if (!target) return;
+        const id = target.getAttribute('data-node-id');
+        const node = cy.getElementById(id);
+        if (node && node.nonempty()) {
+          focusNode(cy, node);
+          renderPanelFor(node);
+        }
+      });
+    }
+
+    function applyHighlight(cy, node){
+        cy.batch(() => {
+            cy.elements().removeClass('h1-node h1-neighbor h1-edge');
+            node.addClass('h1-node');
+            const edges = node.connectedEdges();
+            edges.addClass('h1-edge');
+            edges.connectedNodes().difference(node).addClass('h1-neighbor');
+        });
+    }
+
+    function focusNode(cy, node){
+      cy.elements().unselect();
+      node.select();
+      applyHighlight(cy, node);
+      cy.animate({
+        duration: 600,
+        easing: 'ease-in-out-cubic',
+        center: { eles: node }
+      });
+    }
+
+    // --- Initialize Cytoscape ----------------------------------------------
+    /**
+     * Performance-related tips applied:
+     * - layout: 'preset' (positions come from file) → no heavy layout compute
+     * - textureOnViewport: true and pixelRatio: 'auto' help large graphs
+     * - min-zoomed-font-size avoids label draws (we have no labels anyway)
+     * - hideEdgesOnViewport: false (we keep them) but edges are thin + semi-transparent
+     */
+    function buildCy(container, elements){
+      const cy = cytoscape({
+        container,
+        elements,
+        layout: { name: 'preset', fit: true },
+        wheelSensitivity: 0.2,
+        pixelRatio: 'auto',
+        textureOnViewport: false,
+        hideEdgesOnViewport: false,
+        motionBlur: true,
+        minZoom: 0.1,
+        maxZoom: 20,
+        boxSelectionEnabled: false,
+        userPanningEnabled: true,
+        userZoomingEnabled: true,
+        style: [
+          { selector: 'core', style: { 'selection-box-color': '#5aa2ff', 'selection-box-border-color': '#5aa2ff', 'active-bg-color': '#000' } },
+          {
+            selector: 'node',
+            style: {
+              'width': 4, // small nodes for dense graphs
+              'height': 4,
+              'background-color': '#cfe2ff',
+              'border-width': 0,
+              'opacity': 0.8,
+              'label': '',
+              'min-zoomed-font-size': 1000 // effectively hide any labels
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 1,
+              'line-color': 'rgba(170,178,189,.45)',
+              'opacity': 0.3,
+              'curve-style': 'straight',
+              'target-arrow-shape': 'none', // keep edges minimal; switch to 'triangle' if you want heads
+              'arrow-scale': 0.6
+            }
+          },
+          {
+            selector: 'node:selected',
+            style: {
+              'background-color': '#ff4d4d',
+              'border-color': '#ff4d4d',
+              'border-width': 0,
+              'opacity': 1
+            }
+          },
+          {
+            selector: 'node.h1-node',
+            style: {
+                'background-color': '#ff4d4d',
+                'opacity': 1
+            }
+          },
+          {
+            selector: 'node.h1-neighbor',
+            style: {
+                'background-color': '#ffd400',
+                'opacity': 0.8
+            }
+          },
+          {
+            selector: 'edge.h1-edge',
+            style: {
+                'line-color': '#ffd400',
+                'opacity': 0.8
+            }
+          }
+        ]
+      });
+
+      // Click-to-open panel
+      cy.on('tap', 'node', (evt) => {
+        const node = evt.target;
+        applyHighlight(cy, node);
+        cy.animate({
+            center: { eles: node },
+            duration: 600, 
+            easing: 'ease-in-out-cubic'
+        });
+        renderPanelFor(node);
+      });
+
+      // Double-click background to close panel on small screens
+      cy.on('tap', (evt) => { if (evt.target === cy) closePanel(); });
+
+      // Fit once everything is ready
+      setTimeout(() => { cy.fit(undefined, 10); }, 0);
+
+      return cy;
+    }
+
+    // --- Load data + bootstrap ---------------------------------------------
+    async function bootstrap(){
+      showLoader(true);
+      try {
+        const urlParam = new URLSearchParams(location.search).get('file');
+        const url = urlParam || 'sn-knowledge-graph.json';
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status} ${res.statusText}`);
+        const json = await res.json();
+        const { nodes, edges } = toElements(json);
+
+        // Basic sanity check to help catch CORS/shape issues in GH Pages
+        if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+          throw new Error('Input JSON is not in the expected format (nodes/edges arrays).');
+        }
+
+        const cy = buildCy(document.getElementById('cy'), { nodes, edges });
+        wirePanelClicks(cy);
+
+        // Toolbar actions
+        document.getElementById('fitBtn').addEventListener('click', () => cy.fit(undefined, 10));
+        document.getElementById('resetZoomBtn').addEventListener('click', () => cy.animate({ zoom: 1, center: { eles: cy.nodes() }, duration: 350 }));
+
+        // Expose for debugging from console
+        window.cy = cy;
+      } catch (err) {
+        console.error(err);
+        panelContent.innerHTML = `<div class="section"><h3>Error</h3><div class="kv"><div>${escapeHTML(err.message)}</div></div></div>
+          <div class="section"><h3>Tip: Deploying on GitHub Pages</h3>
+            <div class="kv">
+              <div>Place <code>index.html</code> and <code>sn-knowledge-graph.json</code> in the same folder (root of the pages branch).</div>
+              <div>If using a custom path or filename, append <code>?file=your.json</code> to the URL.</div>
+              <div>If the JSON is large, ensure it&#39;s committed to the repo (no cross-domain CORS).</div>
+            </div>
+          </div>`;
+        panelContent.classList.remove('hidden');
+        emptyMsg.classList.add('hidden');
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    bootstrap();
+  })();
+  </script>
 </body>
 </html>
