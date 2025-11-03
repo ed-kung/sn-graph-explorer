@@ -17,14 +17,20 @@
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
 
     /* Layout: graph on the left, info panel on the right */
-    .app { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 360px; }
+    .app { position: fixed; inset: 0; }
     #cy { width: 100%; height: 100vh; display: block; }
 
     aside#panel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 360px;
       border-left: 1px solid rgba(255,255,255,.06);
       background: var(--panel-bg);
       padding: 14px 14px 18px;
       overflow: auto;
+      z-index: 100;
     }
     .panel-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
     .badge { font-size: 12px; color: var(--muted); border:1px solid rgba(255,255,255,.08); padding:2px 6px; border-radius:999px; }
