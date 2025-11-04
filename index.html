@@ -36,6 +36,8 @@
     .badge { font-size: 12px; color: var(--muted); border:1px solid rgba(255,255,255,.08); padding:2px 6px; border-radius:999px; }
     .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; color: var(--muted); background: transparent; border: 1px solid rgba(255,255,255,.08); text-decoration: none; transition: background .15s ease, color .15s ease, border-color .15s ease; }
     .icon-btn:hover { background: rgba(255,255,255,.06); color: var(--text); border-color: rgba(255,255,255,.18); }
+    .close-btn { display: none; position: absolute; bottom: 16px; right: 16px; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; color: var(--muted); background: transparent; border: 1px solid rgba(255,255,255,0.8); cursor: pointer; }
+    .close-btn-hover { background: rgba(255,255,255,.06); color: var(--text); border-color: rgba(255,255,255,.18); }
     .panel-title { margin: 0; font-size: 16px; font-weight: 600; }
     .muted { color: var(--muted); }
     .kv { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; }
@@ -61,6 +63,7 @@
     a.link:hover { text-decoration: underline; }
 
     @media (max-width: 960px) {
+      .close-btn { display: inline-flex; }
       #cy { padding-right: 0; }
       aside#panel { position: fixed; right: 0; top: 0; bottom: 0; width: min(92vw, 420px); transform: translateX(100%); transition: transform .25s ease; box-shadow: -16px 0 40px rgba(0,0,0,.35); }
       aside#panel.open { transform: translateX(0); }
@@ -79,6 +82,9 @@
       </div>
       <p class="muted" id="empty-msg">Click a node to see details. Left click and drag to pan. Mouse scroll to zoom.</p>
       <div id="panel-content" class="hidden"></div>
+      <button id="closePanelBtn" class="close-btn" title="Close panel" aria-label="Close panel">
+        <i class="fa fa-times"></i>
+      </button>
     </aside>
   </div>
 
@@ -98,6 +104,7 @@
     const panel = document.getElementById('panel');
     const panelContent = document.getElementById('panel-content');
     const emptyMsg = document.getElementById('empty-msg');
+    const closePanelBtn = document.getElementById('closePanelBtn');
 
     // --- Utility helpers ----------------------------------------------------
     function showLoader(show) { loader.classList.toggle('hidden', !show); }
@@ -112,6 +119,12 @@
     function isSmallScreen(){ return window.matchMedia('(max-width: 960px)').matches; }
     function openPanel(){ if (isSmallScreen()) panel.classList.add('open'); }
     function closePanel(){ if (isSmallScreen()) panel.classList.remove('open'); }
+    if (closePanelBtn) {
+      closePanelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePanel();
+      })
+    }
 
     function escapeHTML(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
 
